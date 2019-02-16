@@ -1,0 +1,7 @@
+
+## Note that some parameters could be passed via environment
+
+SUBST_TEMPLATES="$SUBST_TEMPLATES
+-e 's|@dest@|$DEST|g'
+-e 's|@root@|$ROOT|g'
+"

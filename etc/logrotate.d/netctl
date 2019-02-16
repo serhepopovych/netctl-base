@@ -1,0 +1,11 @@
+@dest@/netctl/var/log/*.log
+@dest@/netctl/var/log/*.acct
+{
+	rotate 12
+	su root root
+	weekly
+	missingok
+	notifempty
+	delaycompress
+	compress
+}
