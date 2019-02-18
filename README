@@ -1,0 +1,12 @@
+Netctl base filesystem layout and install scripts
+=================================================
+
+Most of netctl projects depend on specific filesystem layout like
+dedicated tmp and logs directory. There is logrotate(8) configuration
+file for all these log files.
+
+There is install.sh subsystem for those who want to deploy netctl
+projects directly to target system or to run automated tests for it.
+
+Netctl subprojects relying on features described above should add this
+project as git-submodule(1).
