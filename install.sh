@@ -353,11 +353,13 @@ reg_file_copy()
 		# Subproject responsibility?
 		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Outside of SOURCE directory?
-		[ ! -d "$t" ] || s="$t/."
+		[ ! -d "$t" ] || t="$t/."
 		[ -z "${t##$SOURCE/*}" ] || return 0
 		# Make path relative: we do not expect symlinks from DEST
 		# to ROOT as pointless and DEST installed before ROOT
-		relative_path "$DEST${t#$SOURCE}" "$d" s || return
+		t="$DEST${t#$SOURCE}"
+		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
+		relative_path "$t" "$d" s || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
