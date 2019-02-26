@@ -1,4 +1,7 @@
 
+# Inherit subproject(s) variables
+inherit '.<subproject>/<path_to_file>.'
+
 ## Note that some parameters could be passed via environment
 
 SUBST_TEMPLATES="$SUBST_TEMPLATES

@@ -303,7 +303,19 @@ exec_vars()
 		shift
 	done
 
-	"$@"
+	eval "$@"
+}
+
+# Usage: inherit() <subproject>/<path_to_file>
+inherit()
+{
+	local func="${FUNCNAME:-inherit}"
+
+	local f="${1:?missing 1st arg to ${func}() (<subproject>/<path_to_file>)}"
+	local sp="$SOURCE/.subprojects/${f%%/*}"
+	f="${f#*/}"
+
+	[ ! -f "$sp/$f" ] || exec_vars SOURCE="$sp" -- . "\$SOURCE/$f"
 }
 
 # Usage: subst_templates <file>
@@ -352,7 +364,7 @@ reg_file_copy()
 		if [ -n "$DO_SUBST_TEMPLATES" ]; then
 			# Copy source to temporary destination
 			t="$(mktemp "$d.XXXXXXXX")" && cp -f "$s" "$t" &&
-				exec_vars L='' -- subst_templates "$t" || return
+				exec_vars L='' -- subst_templates "'$t'" || return
 
 			if [ -f "$d" ] && cmp -s "$t" "$d"; then
 				# Skip file with same contents
@@ -480,8 +492,8 @@ MARK_FILE="$WORK_DIR/do-$NAME"
 
 if [ -e "$MARK_FILE" ]; then
 	exec_vars L='S' -- \
-		log_msg 'skipping as already installed (mark file "%s" exist)\n' \
-			"${MARK_FILE#$DEST/}"
+		log_msg "'skipping as already installed (mark file "%s" exist)\n'" \
+			"'${MARK_FILE#$DEST/}'"
 	exit 0
 else
 	: >"$MARK_FILE" ||
@@ -556,7 +568,7 @@ install_root \
 # Replace configuration templates
 if [ -z "$AS_SUBPROJECT" ]; then
 	exec_vars L='W' -- walk_paths subst_templates \
-				"$DEST/netctl"
+				"'$DEST/netctl'"
 fi
 
 # Source project specific code
