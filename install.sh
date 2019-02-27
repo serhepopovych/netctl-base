@@ -365,7 +365,7 @@ reg_file_copy()
 	else
 		if [ -n "$DO_SUBST_TEMPLATES" ]; then
 			# Copy source to temporary destination
-			t="$(mktemp "$d.XXXXXXXX")" && cp -f "$s" "$t" &&
+			t="$(mktemp "$d.XXXXXXXX")" && cp -fp "$s" "$t" &&
 				exec_vars L='' -- subst_templates "'$t'" || return
 
 			if [ -f "$d" ] && cmp -s "$t" "$d"; then
@@ -376,13 +376,13 @@ reg_file_copy()
 				# Make backup if exists
 				[ ! -e "$d" ] || mv -f "$d" "$d.nctl-inst-sh"
 				# Move new file
-				mv -f "$t" "$d" || return
+				mv -f "$t" "$d" && chmod -f go+r "$d" || return
 			fi
 		else
 			# Do not copy file with same contents
 			[ ! -f "$d" ] || ! cmp -s "$s" "$d" || return 0
 			# Copy regular file
-			cp -f "$s" "$d" || return
+			cp -fp "$s" "$d" || return
 		fi
 	fi
 
