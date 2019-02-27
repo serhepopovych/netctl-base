@@ -350,14 +350,15 @@ reg_file_copy()
 
 	if [ -L "$s" ]; then
 		t="$(cd "$SOURCE" && readlink -m "$s")" || return
-		# Subproject responsibility?
-		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Outside of SOURCE directory?
 		[ ! -d "$t" ] || t="$t/."
 		[ -z "${t##$SOURCE/*}" ] || return 0
+		# Subproject responsibility?
+		t="${t#$SOURCE}"
+		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Make path relative: we do not expect symlinks from DEST
 		# to ROOT as pointless and DEST installed before ROOT
-		t="$DEST${t#$SOURCE}"
+		t="$DEST$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
 		# Link it
