@@ -566,6 +566,7 @@ install_dest \
 # Install system wide (ROOT) configuration files
 install_root \
 	'/etc' \
+	'/lib' \
 	'/usr'
 
 # Replace configuration templates
