@@ -1,5 +1,5 @@
-@dest@/netctl/var/log/*.log
-@dest@/netctl/var/log/*.acct
+@target@/netctl/var/log/*.log
+@target@/netctl/var/log/*.acct
 {
 	rotate 12
 	su root root

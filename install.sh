@@ -474,6 +474,9 @@ if [ -z "$AS_SUBPROJECT" ]; then
 			"$prog_name" "$DEST"
 	fi
 
+	# Destination on target system (useful for package build)
+	export TARGET="${TARGET:-$DEST}"
+
 	# Working directory
 	export WORK_DIR="$DEST/.install"
 	# Create installation log
