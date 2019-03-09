@@ -477,6 +477,11 @@ if [ -z "$AS_SUBPROJECT" ]; then
 	# Destination on target system (useful for package build)
 	export TARGET="${TARGET:-$DEST}"
 
+	# System wide directory prefix
+	[ -n "$ROOT" ] && ROOT="$(cd "$ROOT" 2>/dev/null && echo "$PWD")" || \
+		ROOT="$DEST"
+	export ROOT
+
 	# Working directory
 	export WORK_DIR="$DEST/.install"
 	# Create installation log
@@ -506,10 +511,6 @@ else
 		abort '%s: mark file "%s" is not writable\n' \
 			"$prog_name" "$MARK_FILE"
 fi
-
-# System wide directory prefix
-[ -n "$ROOT" ] && ROOT="$(cd "$ROOT" 2>/dev/null && echo "$PWD")" || ROOT="$DEST"
-export ROOT
 
 # Make sure we known effective uid/gid we running
 sp=${EUID:="$(id -u)"} ||
