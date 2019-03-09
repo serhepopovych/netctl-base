@@ -453,15 +453,11 @@ SOURCE="$(cd "$SOURCE" && echo "$PWD")" &&
 	abort '%s: cannot find project location\n' "$prog_name"
 NAME="${SOURCE##*/}"
 
-# Detect if running as subproject
-[ "$SOURCE/../../.subprojects" -ef "$SOURCE/.." ] &&
-	AS_SUBPROJECT="$NAME" || AS_SUBPROJECT=
-
 # Detect if running as base
 [ ! -L "$SOURCE/install.sh" ] &&
 	AS_BASE="$NAME" || AS_BASE=
 
-if [ -z "$AS_SUBPROJECT" ]; then
+if [ -z "$PARENT" ]; then
 	# Destination to install
 	export DEST="${DEST:-/}"
 
@@ -528,7 +524,7 @@ exit_handler()
 			"$NAME/install.sh" $rc
 	fi
 
-	if [ -z "$AS_SUBPROJECT" ]; then
+	if [ -z "$PARENT" ]; then
 		V=1 error '%s: installation log file located at "%s"\n' \
 			"$NAME" "$INSTALL_LOG"
 	fi
@@ -555,7 +551,7 @@ for sp in "$SOURCE/.subprojects"/*; do
 	     -r "$install_sh" -a \
 	     -x "$install_sh" ]; then
 		# then execute
-		"$install_sh" ||
+		exec_vars PARENT="$NAME" -- "$install_sh" ||
 			abort '%s: subproject "%s/install.sh" failed\n' \
 				"$prog_name" "${sp##*/}"
 	fi
@@ -574,7 +570,7 @@ install_root \
 	'/usr'
 
 # Replace configuration templates
-if [ -z "$AS_SUBPROJECT" ]; then
+if [ -z "$PARENT" ]; then
 	exec_vars L='W' -- walk_paths subst_templates \
 				"'$DEST/netctl'"
 fi
