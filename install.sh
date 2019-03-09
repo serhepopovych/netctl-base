@@ -296,7 +296,7 @@ exec_vars()
 	# variables to handle both.
 	while [ $# -gt 0 ]; do
 		case "$1" in
-			*=*)  eval local "'$1'" ;;
+			*=*)  eval "local '$1'; export '${1%%=*}'" ;;
 			--)   shift; break ;;
 			*)    break ;;
 		esac
