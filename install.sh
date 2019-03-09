@@ -318,25 +318,49 @@ inherit()
 	[ ! -f "$sp/$f" ] || exec_vars SOURCE="$sp" -- . "\$SOURCE/$f"
 }
 
+# Usage: subst_templates_sed <file>
+subst_templates_sed()
+{
+	local f="$1"
+
+	[ -f "$f" -a -s "$f" ] || return 0
+
+	eval sed -i "\$f" $SUBST_TEMPLATES
+}
+
+# Register default hook. Can be overwritten in "vars-sh".
+subst_templates_hook=''
+
 # Usage: subst_templates <file>
+subst_templates_typecheck_done=''
 subst_templates()
 {
 	local func="${FUNCNAME:-subst_templates}"
 
-	local f="${1:?missing 1st arg to ${func}() (<file>)}"
+	local rc
 
-	[ -f "$f" -a -s "$f" ] || return 0
+	# Typecheck registered hook
+	if [ -z "$subst_templates_typecheck_done" ]; then
+		if [ -n "$subst_templates_hook" ]; then
+			rc="$(type "$subst_templates_hook" 2>/dev/null)"
+			[ -z "${rc##*function*}" ] ||
+				subst_templates_hook='subst_templates_sed'
+		else
+			subst_templates_hook='subst_templates_sed'
+		fi
+		subst_templates_typecheck_done=y
+	fi
 
 	local __ifs="${IFS}"
 	IFS='
 '
-	eval sed -i "\$f" $SUBST_TEMPLATES
-	local rc=$?
+	"$subst_templates_hook" "$1"
+	rc=$?
 	IFS="${__ifs}"
 
 	return_var $rc
 
-	log 'replaced templates in "%s" file' "${f#$DEST/}"
+	log 'replaced templates in "%s" file' "${1#$DEST/}"
 }
 
 # Usage: reg_file_copy()
