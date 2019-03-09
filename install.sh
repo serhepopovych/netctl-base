@@ -565,9 +565,23 @@ install_dest \
 
 # Install system wide (ROOT) configuration files
 install_root \
-	'/etc' \
-	'/lib' \
-	'/usr'
+	'/bin'    \
+	'/boot'   \
+	'/dev'    \
+	'/etc'    \
+	'/home'   \
+	'/lib'    \
+	'/libx32' \
+	'/lib32'  \
+	'/lib64'  \
+	'/media'  \
+	'/mnt'    \
+	'/opt'    \
+	'/root'   \
+	'/sbin'   \
+	'/srv'    \
+	'/usr'    \
+	'/var'
 
 # Replace configuration templates
 if [ -z "$PARENT" ]; then
