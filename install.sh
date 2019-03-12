@@ -544,12 +544,12 @@ exit_handler()
 {
 	local rc=$?
 	if [ $rc -ne 0 ]; then
-		V=1 error '%s: install exited with error %d\n' \
-			"$NAME/install.sh" $rc
+		exec_vars V=1 -- error "'%s: install exited with error %d\n'" \
+			"'$NAME/install.sh'" $rc
 	fi
 
 	if [ -z "$PARENT" ]; then
-		V=1 error '%s: installation log file located at "%s"\n' \
+		error '%s: installation log file located at "%s"\n' \
 			"$NAME" "$INSTALL_LOG"
 	fi
 }
