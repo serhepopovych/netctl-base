@@ -15,17 +15,17 @@ fail()
 	! :
 }
 
-# Usage: error <fmt> ...
-error()
+# Usage: msg <fmt> ...
+msg()
 {
 	local rc=$?
 
-	local func="${FUNCNAME:-error}"
+	local func="${FUNCNAME:-msg}"
 
 	local fmt="${1:?missing 1st arg to ${func}() (<fmt>)}"
 	shift
 
-	[ $V -le 0 ] || printf >&2 -- "${fmt}" "$@"
+	[ $V -le 0 ] || printf -- "${fmt}" "$@"
 
 	return $rc
 }
@@ -33,7 +33,7 @@ error()
 # Usage: abort <fmt> ...
 abort()
 {
-	V=1 error "$@"
+	V=1 msg "$@" >&2
 	local rc=$?
 	trap - EXIT
 	exit $rc
@@ -544,12 +544,12 @@ exit_handler()
 {
 	local rc=$?
 	if [ $rc -ne 0 ]; then
-		exec_vars V=1 -- error "'%s: install exited with error %d\n'" \
+		exec_vars V=1 -- msg "'%s: install exited with error %d\n'" \
 			"'$NAME/install.sh'" $rc
 	fi
 
 	if [ -z "$PARENT" ]; then
-		error '%s: installation log file located at "%s"\n' \
+		msg '%s: installation log file located at "%s"\n' \
 			"$NAME" "$INSTALL_LOG"
 	fi
 }
