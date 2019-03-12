@@ -464,7 +464,7 @@ adj_rights()
 prog_name="${0##*/}"
 
 # Verbosity: report errors by default
-V=1
+[ "$V" -le 0 -o "$V" -ge 0 ] 2>/dev/null || V=1
 
 # Logging facility: G - Global
 L='G'
