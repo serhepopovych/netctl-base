@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-# Rquires: mkdir(1), rm(1)
+# Rquires: mkdir(1), rm(1), mktemp(1)
 
 # Use KEEP_LOG=1 to keep installation logs in ".install" and entire <netctl_dir>
 # on failure to install to temporary location.
