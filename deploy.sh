@@ -57,7 +57,7 @@ exec_vars()
 usage()
 {
 	local rc=$?
-	printf -- 'Usage: %s -s <netctl_git> [-d <netctl_dir>] [ -t <dir> ] [-h|-u]
+	printf -- 'Usage: %s -s <netctl_git> [-d <netctl_dir>] [ -t <dir> ] [-o] [-h|-u]
 where
     -s <netctl_git> - directory with netctl project or "" (empty) to try
                       this script directory ("%s")
@@ -65,6 +65,8 @@ where
                       subdirs will be created (default: mktemp -d "%s.XXXXXXXX")
     -t <dir>        - absolute path prefix on target system to the installed
                       files (default: "%s")
+    -o              - force install to skip privileged parts like user account
+                      creation even if running as superuser (default: no)
     -h|-u           - display this help message
 ' "$prog_name" "$SOURCE" "$NAME" "$TARGET"
 	exit $rc
@@ -89,11 +91,13 @@ TARGET='/'
 ## Parse command line arguments
 netctl_git=''
 netctl_sys="$TARGET"
-while getopts 's:d:t:hu' c; do
+netctl_ord=''
+while getopts 's:d:t:ohu' c; do
 	case "$c" in
 		s) netctl_git="-$OPTARG" ;;
 		d) netctl_dir="$OPTARG" ;;
 		t) netctl_sys="$OPTARG" ;;
+		o) netctl_ord=y ;;
 		h|u) usage ;;
 		*) ! : || usage ;;
 	esac
@@ -162,7 +166,15 @@ mkdir -p "$ROOT" "$DEST" || \
 	abort 'fail to make "root" and "dest" subdirs under "%s"\n' \
 		"$netctl_dir"
 
-exec_vars V=$V -- "$netctl_install_sh" || \
+# Reserved value for uid/gid is -1 as per
+# kernel/sys.c::setresuid() syscall.
+#
+# Use 0xffffffff as -1 as $(printf '%#x' -1) will
+# give 64-bit value while uid/gid are 32-bit.
+RSVD_UGID=0xffffffff
+
+exec_vars V=$V ${netctl_ord:+EUID=$RSVD_UGID EGID=$RSVD_UGID} -- \
+	"$netctl_install_sh" || \
 	abort 'fail to install netctl using "%s" to "%s"\n' \
 		"$netctl_install_sh" "$netctl_dir"
 
