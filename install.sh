@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 # Requires: id(1), mkdir(1), ln(1), cp(1), mv(1), rm(1), readlink(1), sed(1)
-# Requires: chown(1), chmod(1), cmp(1), mktemp(1), sort(1)
+# Requires: chown(1), chmod(1), cmp(1), mktemp(1), sort(1), tr(1)
 
 # Usage: pass() [...]
 pass()
@@ -456,6 +456,55 @@ adj_rights()
 			"${owner:-not changed}" "${mode:-not changed}"
 		shift
 	done
+}
+
+NAME_UC="$(echo "$NAME" | tr '[:lower:]' '[:upper:]')"
+begin_header_str="##### BEGIN ${NAME_UC} #####"
+end_header_str="##### END ${NAME_UC} #####"
+
+# Usage: begin_header <file>
+begin_header()
+{
+	local func="${FUNCNAME:-begin_header}"
+
+	local f="${1:?missing 1st arg to ${func}() (<file>)}"
+
+	echo "$begin_header_str" >>"$f"
+}
+
+# Usage: end_header <file>
+end_header()
+{
+	local func="${FUNCNAME:-end_header}"
+
+	local f="${1:?missing 1st arg to ${func}() (<file>)}"
+
+	echo "$end_header" >>"$f"
+}
+
+# Usage: prepare_file <file>
+prepare_file()
+{
+	local func="${FUNCNAME:-prepare_file}"
+
+	local f="${1:?missing 1st arg to ${func}() (<file>)}"
+
+	if [ -e "$f" ]; then
+		# Remove block wrapped by begin/end header
+		[ -f "$f" ] || return
+		sed -n -e "/$begin_header_str/,/$end_header_str/!p" -i "$f" ||:
+	else
+		# Make sure we are not ending with '/'
+		[ -n "${f##*/}" ] || return
+
+		local d="$ROOT/${f%/*}"
+		if [ ! -d "$d" ]; then
+			[ ! -e "$d" ] && mkdir -p "$d" || return
+		fi
+
+		# Create empty file
+		: >"$f" || return
+	fi
 }
 
 ################################################################################
