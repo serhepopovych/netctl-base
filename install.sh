@@ -157,8 +157,8 @@ relative_path()
 #  MKDIR  - create destination directories (default: install -d), use /bin/false
 #           to force destination directory tree to exist and match source
 #  BACKUP - backup file extension or empty to disable backups (default: empty)
-#  EEXIST - fail when destination file exists and backup either disabled or
-#           failed (default: empty)
+#  EEXIST - fail when non-empty, destination file exists and backup either
+#           disabled or failed (default: empty)
 #  REG_FILE_COPY - copy regular file (default: cp -dp)
 #  SCL_FILE_COPY - copy special file like device or socket (default: ln -snf)
 install_sh()
@@ -398,8 +398,6 @@ reg_file_copy()
 				rm -f "$t" ||:
 				return
 			else
-				# Make backup if exists
-				[ ! -e "$d" ] || mv -f "$d" "$d.nctl-inst-sh"
 				# Move new file
 				mv -f "$t" "$d" && chmod -f go+r "$d" || return
 			fi
