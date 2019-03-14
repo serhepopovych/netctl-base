@@ -57,7 +57,8 @@ exec_vars()
 usage()
 {
 	local rc=$?
-	printf -- 'Usage: %s -s <netctl_git> [-d <netctl_dir>] [ -t <dir> ] [-o] [-h|-u]
+	printf -- '
+Usage: %s -s <netctl_git> [-d <netctl_dir>] [ -t <dir> ] [-o] [-b <ext>] [-h|-u]
 where
     -s <netctl_git> - directory with netctl project or "" (empty) to try
                       this script directory ("%s")
@@ -67,7 +68,11 @@ where
                       files (default: "%s")
     -o              - force install to skip privileged parts like user account
                       creation even if running as superuser (default: no)
+    -b <ext>        - backup existing destination regular file or symlink when
+                      exists by appending .<ext>ension to entry name on rename;
+                      skip on failure (default: disabled, <ext> is "inst-sh")
     -h|-u           - display this help message
+
 ' "$prog_name" "$SOURCE" "$NAME" "$TARGET"
 	exit $rc
 }
@@ -92,12 +97,14 @@ TARGET='/'
 netctl_git=''
 netctl_sys="$TARGET"
 netctl_ord=''
-while getopts 's:d:t:ohu' c; do
+netctl_bak=''
+while getopts 's:d:t:ob:hu' c; do
 	case "$c" in
 		s) netctl_git="-$OPTARG" ;;
 		d) netctl_dir="$OPTARG" ;;
 		t) netctl_sys="$OPTARG" ;;
 		o) netctl_ord=y ;;
+		b) netctl_bak="${OPTARG:-inst-sh}" ;;
 		h|u) usage ;;
 		*) ! : || usage ;;
 	esac
@@ -173,7 +180,8 @@ mkdir -p "$ROOT" "$DEST" || \
 # give 64-bit value while uid/gid are 32-bit.
 RSVD_UGID=0xffffffff
 
-exec_vars V=$V ${netctl_ord:+EUID=$RSVD_UGID EGID=$RSVD_UGID} -- \
+exec_vars V=$V ${netctl_ord:+EUID=$RSVD_UGID EGID=$RSVD_UGID} \
+	BACKUP="$netctl_bak" EEXIST='' -- \
 	"$netctl_install_sh" || \
 	abort 'fail to install netctl using "%s" to "%s"\n' \
 		"$netctl_install_sh" "$netctl_dir"
