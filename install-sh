@@ -2,7 +2,7 @@
 
 # Requires:
 
-[ "$EUID" != 0 ] || owner='root:root'
+[ "$INSTALL_EUID" != 0 ] || owner='root:root'
 
 # tmp, var/log
 adj_rights "$owner" 2775 \

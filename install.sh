@@ -580,11 +580,11 @@ else
 fi
 
 # Make sure we known effective uid/gid we running
-sp=${EUID:="$(id -u)"} ||
+INSTALL_EUID="${INSTALL_EUID:-${EUID:-$(id -u)}}" ||
 	abort '%s: fail to get process effective UID\n' "$prog_name"
-sp=${EGID:="$(id -g)"} ||
+INSTALL_EGID="${INSTALL_EGID:-${EGID:-$(id -g)}}" ||
 	abort '%s: fail to get process effective GID\n' "$prog_name"
-export EUID EGID
+export INSTALL_EUID INSTALL_EGID
 
 # Configure EXIT "signal" handler
 exit_handler()

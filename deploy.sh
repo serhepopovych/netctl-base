@@ -180,7 +180,7 @@ mkdir -p "$ROOT" "$DEST" || \
 # give 64-bit value while uid/gid are 32-bit.
 RSVD_UGID=0xffffffff
 
-exec_vars V=$V ${netctl_ord:+EUID=$RSVD_UGID EGID=$RSVD_UGID} \
+exec_vars V=$V ${netctl_ord:+INSTALL_EUID=$RSVD_UGID INSTALL_EGID=$RSVD_UGID} \
 	BACKUP="$netctl_bak" EEXIST='' -- \
 	"$netctl_install_sh" || \
 	abort 'fail to install netctl using "%s" to "%s"\n' \
