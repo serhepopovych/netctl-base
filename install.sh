@@ -227,6 +227,7 @@ install_sh()
 		if [ -e "$d" ]; then
 			# Same as source: skip
 			[ ! "$d" -ef "$s" ] || continue
+			[ -d "$d" -o -d "$s" ] || ! cmp -s "$d" "$s" || continue
 
 			if [ -n "$BACKUP" -a \( -L "$d" -o -f "$d" \) ] &&
 			   mv -f "$d" "$d.$BACKUP"; then
@@ -393,7 +394,7 @@ reg_file_copy()
 			t="$(mktemp "$d.XXXXXXXX")" && cp -fp "$s" "$t" &&
 				exec_vars L='' -- subst_templates "'$t'" || return
 
-			if [ -f "$d" ] && cmp -s "$t" "$d"; then
+			if [ ! -d "$d" ] && cmp -s "$t" "$d"; then
 				# Skip file with same contents
 				rm -f "$t" ||:
 				return
@@ -402,8 +403,6 @@ reg_file_copy()
 				mv -f "$t" "$d" && chmod -f go+r "$d" || return
 			fi
 		else
-			# Do not copy file with same contents
-			[ ! -f "$d" ] || ! cmp -s "$s" "$d" || return 0
 			# Copy regular file
 			cp -fp "$s" "$d" || return
 		fi
