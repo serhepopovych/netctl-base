@@ -2,10 +2,8 @@
 
 # Requires:
 
-[ "$INSTALL_EUID" != 0 ] || owner='root:root'
-
 # tmp, var/log
-adj_rights "$owner" 2775 \
+adj_rights '' 2775 \
 	"$DEST/netctl/tmp" \
 	"$DEST/netctl/var/log"
 

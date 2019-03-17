@@ -159,7 +159,7 @@ relative_path()
 #  BACKUP - backup file extension or empty to disable backups (default: empty)
 #  EEXIST - fail when non-empty, destination file exists and backup either
 #           disabled or failed (default: empty)
-#  REG_FILE_COPY - copy regular file (default: cp -dp)
+#  REG_FILE_COPY - copy regular file (default: cp -fd --remove-destination)
 #  SCL_FILE_COPY - copy special file like device or socket (default: ln -snf)
 install_sh()
 {
@@ -187,7 +187,7 @@ install_sh()
 	local MKDIR="${MKDIR:-mkdir -p}"
 	local BACKUP="${BACKUP:-}"
 	local EEXIST="${EEXIST:-}"
-	local REG_FILE_COPY="${REG_FILE_COPY:-cp -dp}"
+	local REG_FILE_COPY="${REG_FILE_COPY:-cp -fd --remove-destination}"
 	local SCL_FILE_COPY="${SCL_FILE_COPY:-ln -snf}"
 
 	[ -L "$src" -o ! -d "$src" ] || src="$src/* $src/.*"
@@ -391,7 +391,7 @@ reg_file_copy()
 	else
 		if [ -n "$DO_SUBST_TEMPLATES" ]; then
 			# Copy source to temporary destination
-			t="$(mktemp "$d.XXXXXXXX")" && cp -fp "$s" "$t" &&
+			t="$(mktemp "$d.XXXXXXXX")" && cp -fd "$s" "$t" &&
 				exec_vars L='' -- subst_templates "'$t'" || return
 
 			if [ ! -d "$d" ] && cmp -s "$t" "$d"; then
@@ -404,7 +404,7 @@ reg_file_copy()
 			fi
 		else
 			# Copy regular file
-			cp -fp "$s" "$d" || return
+			cp -fd --remove-destination "$s" "$d" || return
 		fi
 	fi
 
