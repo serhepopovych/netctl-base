@@ -224,7 +224,7 @@ install_sh()
 			d="$d/${s##*/}"
 		fi
 
-		if [ -e "$d" ]; then
+		if [ -e "$d" -o -L "$d" ]; then
 			# Same as source: skip
 			[ ! "$d" -ef "$s" ] || continue
 			[ -d "$d" -o -d "$s" ] || ! cmp -s "$d" "$s" || continue
