@@ -121,8 +121,8 @@ netctl_git="${netctl_git#-}"
 # -s <netctl_git>
 netctl_git="${netctl_git:-$SOURCE}"
 netctl_install_sh="$netctl_git/install.sh"
-[ -d "$netctl_git/.git" -a -e "$netctl_install_sh" ] || \
-	abort '"%s" is not a <netctl_git> directory\n' "$1"
+[ -e "$netctl_git/.git" -a -e "$netctl_install_sh" ] || \
+	abort '"%s" is not a <netctl_git> directory\n' "$netctl_git"
 
 # -d <netctl_dir>
 if [ -n "$netctl_dir" ]; then
