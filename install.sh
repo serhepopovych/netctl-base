@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 # Requires: id(1), mkdir(1), ln(1), cp(1), mv(1), rm(1), readlink(1), sed(1)
-# Requires: chown(1), chmod(1), cmp(1), mktemp(1), sort(1), tr(1)
+# Requires: chown(1), chmod(1), cmp(1), mktemp(1), sort(1), tr(1), rmdir(1)
 
 # Usage: pass() [...]
 pass()
@@ -159,8 +159,9 @@ relative_path()
 #  BACKUP - backup file extension or empty to disable backups (default: empty)
 #  EEXIST - fail when non-empty, destination file exists and backup either
 #           disabled or failed (default: empty)
-#  REG_FILE_COPY - copy regular file (default: cp -fd --remove-destination)
-#  SCL_FILE_COPY - copy special file like device or socket (default: ln -snf)
+#  REG_FILE_COPY - copy regular file (default: install_sh__reg_file_copy())
+#  SCL_FILE_COPY - copy special file like device or socket
+#                  (default: install_sh__scl_file_copy())
 install_sh()
 {
 	local func="${FUNCNAME:-install_sh}"
@@ -187,8 +188,22 @@ install_sh()
 	local MKDIR="${MKDIR:-mkdir -p}"
 	local BACKUP="${BACKUP:-}"
 	local EEXIST="${EEXIST:-}"
-	local REG_FILE_COPY="${REG_FILE_COPY:-cp -fd --remove-destination}"
-	local SCL_FILE_COPY="${SCL_FILE_COPY:-ln -snf}"
+	# Usage: install_sh__reg_file_copy <s> <d>
+	install_sh__reg_file_copy()
+	{
+		local s="$1" d="$2"
+		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+		cp -fd --remove-destination "$s" "$d"
+	}
+	local REG_FILE_COPY="${REG_FILE_COPY:-install_sh__reg_file_copy}"
+	# Usage: install_sh__scl_file_copy <s> <d>
+	install_sh__scl_file_copy()
+	{
+		local s="$1" d="$2"
+		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+		ln -snf "$s" "$d"
+	}
+	local SCL_FILE_COPY="${SCL_FILE_COPY:-install_sh__scl_file_copy}"
 
 	[ -L "$src" -o ! -d "$src" ] || src="$src/* $src/.*"
 
@@ -386,6 +401,8 @@ reg_file_copy()
 		t="$DEST$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
+		# Try to remove existing empty directory
+		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
@@ -398,11 +415,14 @@ reg_file_copy()
 				# Skip file with same contents
 				rm -f "$t" ||:
 				return
-			else
-				# Move new file
-				mv -f "$t" "$d" && chmod -f go+r "$d" || return
 			fi
+			# Try to remove existing empty directory
+			[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+			# Move new file
+			mv -f "$t" "$d" && chmod -f go+r "$d" || return
 		else
+			# Try to remove existing empty directory
+			[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
 			# Copy regular file
 			cp -fd --remove-destination "$s" "$d" || return
 		fi
