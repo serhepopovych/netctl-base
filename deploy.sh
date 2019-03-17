@@ -2,7 +2,7 @@
 
 # Rquires: mkdir(1), rm(1), mktemp(1)
 
-# Use KEEP_LOG=1 to keep installation logs in ".install" and entire <netctl_dir>
+# Use KEEP_LOG=1 to keep installation logs in ".install" and entire <deploy_dir>
 # on failure to install to temporary location.
 
 ################################################################################
@@ -58,11 +58,11 @@ usage()
 {
 	local rc=$?
 	printf -- '
-Usage: %s -s <netctl_git> [-d <netctl_dir>] [ -t <dir> ] [-o] [-b <ext>] [-h|-u]
+Usage: %s -s <deploy_git> [-d <deploy_dir>] [ -t <dir> ] [-o] [-b <ext>] [-h|-u]
 where
-    -s <netctl_git> - directory with netctl project or "" (empty) to try
+    -s <deploy_git> - directory with deploy project or "" (empty) to try
                       this script directory ("%s")
-    -d <netctl_dir> - install destination directory where "root" and "dest"
+    -d <deploy_dir> - install destination directory where "root" and "dest"
                       subdirs will be created (default: mktemp -d "%s.XXXXXXXX")
     -t <dir>        - absolute path prefix on target system to the installed
                       files (default: "%s")
@@ -94,17 +94,17 @@ NAME="${SOURCE##*/}"
 TARGET='/'
 
 ## Parse command line arguments
-netctl_git=''
-netctl_sys="$TARGET"
-netctl_ord=''
-netctl_bak=''
+deploy_git=''
+deploy_sys="$TARGET"
+deploy_ord=''
+deploy_bak=''
 while getopts 's:d:t:ob:hu' c; do
 	case "$c" in
-		s) netctl_git="-$OPTARG" ;;
-		d) netctl_dir="$OPTARG" ;;
-		t) netctl_sys="$OPTARG" ;;
-		o) netctl_ord=y ;;
-		b) netctl_bak="${OPTARG:-inst-sh}" ;;
+		s) deploy_git="-$OPTARG" ;;
+		d) deploy_dir="$OPTARG" ;;
+		t) deploy_sys="$OPTARG" ;;
+		o) deploy_ord=y ;;
+		b) deploy_bak="${OPTARG:-inst-sh}" ;;
 		h|u) usage ;;
 		*) ! : || usage ;;
 	esac
@@ -115,24 +115,24 @@ shift $((OPTIND - 1))
 [ $# -eq 0 ] || usage
 
 # mandatory argument
-[ -n "$netctl_git" ] || usage
-netctl_git="${netctl_git#-}"
+[ -n "$deploy_git" ] || usage
+deploy_git="${deploy_git#-}"
 
-# -s <netctl_git>
-netctl_git="${netctl_git:-$SOURCE}"
-netctl_install_sh="$netctl_git/install.sh"
-[ -e "$netctl_git/.git" -a -e "$netctl_install_sh" ] || \
-	abort '"%s" is not a <netctl_git> directory\n' "$netctl_git"
+# -s <deploy_git>
+deploy_git="${deploy_git:-$SOURCE}"
+deploy_install_sh="$deploy_git/install.sh"
+[ -e "$deploy_git/.git" -a -e "$deploy_install_sh" ] || \
+	abort '"%s" is not a <deploy_git> directory\n' "$deploy_git"
 
-# -d <netctl_dir>
-if [ -n "$netctl_dir" ]; then
-	[ -d "$netctl_dir" -o ! -e "$netctl_dir" ] || \
-		abort '"%s" exists and not a directory\n' "$netctl_dir"
-	netctl_dir_is_temp=
+# -d <deploy_dir>
+if [ -n "$deploy_dir" ]; then
+	[ -d "$deploy_dir" -o ! -e "$deploy_dir" ] || \
+		abort '"%s" exists and not a directory\n' "$deploy_dir"
+	deploy_dir_is_temp=
 else
-	netctl_dir="$(mktemp -d "$NAME.XXXXXXXX")" || \
+	deploy_dir="$(mktemp -d "$NAME.XXXXXXXX")" || \
 		abort 'fail to make temporary directory for install\n'
-	netctl_dir_is_temp=y
+	deploy_dir_is_temp=y
 fi
 
 ## Prepare cleanup
@@ -146,32 +146,32 @@ exit_handler()
 		msg 'success\n'
 
 		# Report install location: can be used by package manager
-		exec_vars V=1 -- msg "'netctl_dir:%s\n'" "'$netctl_dir'"
+		exec_vars V=1 -- msg "'deploy_dir:%s\n'" "'$deploy_dir'"
 
-		netctl_dir="$DEST/.install"
-	elif [ -n "$netctl_dir_is_temp" ]; then
+		deploy_dir="$DEST/.install"
+	elif [ -n "$deploy_dir_is_temp" ]; then
 		msg 'failure\n'
 	else
-		netctl_dir=
+		deploy_dir=
 	fi
 
-	if [ -z "$KEEP_LOG" -a -n "$netctl_dir" ]; then
-		msg 'cleaning up (remove "%s")\n' "$netctl_dir"
-		rm -rf "$netctl_dir" ||:
+	if [ -z "$KEEP_LOG" -a -n "$deploy_dir" ]; then
+		msg 'cleaning up (remove "%s")\n' "$deploy_dir"
+		rm -rf "$deploy_dir" ||:
 	fi
 }
 trap exit_handler EXIT
 
-## Install netctl
-msg 'installing to "%s"\n' "$netctl_dir"
+## Install deploy
+msg 'installing to "%s"\n' "$deploy_dir"
 
-export ROOT="$netctl_dir/root"
-export DEST="$netctl_dir/dest"
-export TARGET="$netctl_sys"
+export ROOT="$deploy_dir/root"
+export DEST="$deploy_dir/dest"
+export TARGET="$deploy_sys"
 
 mkdir -p "$ROOT" "$DEST" || \
 	abort 'fail to make "root" and "dest" subdirs under "%s"\n' \
-		"$netctl_dir"
+		"$deploy_dir"
 
 # Reserved value for uid/gid is -1 as per
 # kernel/sys.c::setresuid() syscall.
@@ -180,10 +180,10 @@ mkdir -p "$ROOT" "$DEST" || \
 # give 64-bit value while uid/gid are 32-bit.
 RSVD_UGID=0xffffffff
 
-exec_vars V=$V ${netctl_ord:+INSTALL_EUID=$RSVD_UGID INSTALL_EGID=$RSVD_UGID} \
-	BACKUP="$netctl_bak" EEXIST='' -- \
-	"$netctl_install_sh" || \
-	abort 'fail to install netctl using "%s" to "%s"\n' \
-		"$netctl_install_sh" "$netctl_dir"
+exec_vars V=$V ${deploy_ord:+INSTALL_EUID=$RSVD_UGID INSTALL_EGID=$RSVD_UGID} \
+	BACKUP="$deploy_bak" EEXIST='' -- \
+	"$deploy_install_sh" || \
+	abort 'fail to install deploy using "%s" to "%s"\n' \
+		"$deploy_install_sh" "$deploy_dir"
 
 exit 0
