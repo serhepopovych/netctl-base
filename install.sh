@@ -190,6 +190,32 @@ same()
 #  SCL_FILE_COPY - copy special file like device or socket
 #                  (default: install_sh__scl_file_copy())
 
+# Usage: install_sh__backup() <dst>
+install_sh__backup()
+{
+	local func="${FUNCNAME:-install_sh__backup}"
+
+	local d="${1:?missing 1st arg to ${func}() (<dst>)}"
+
+	local rc=0
+
+	if [ -L "$d" ]; then
+		# cp(1) does follow link for existing
+		# directories even with -d option
+		if [ -n "$BACKUP" ]; then
+			mv -f "$d" "$d.$BACKUP" || rc=$?
+		else
+			rm -f "$d" || rc=$?
+		fi
+		[ $rc -eq 0 -o -z "$EEXIST" ] || return $rc
+	elif [ -d "$d" ]; then
+		rmdir "$d" 2>/dev/null || return
+	fi
+
+	# Not copying to directory
+	[ ! -d "$d" ]
+}
+
 # Usage: install_sh__reg_file_copy() <src> <dst>
 install_sh__reg_file_copy()
 {
@@ -197,30 +223,6 @@ install_sh__reg_file_copy()
 
 	local s="${1:?missing 1st arg to ${func}() (<src>)}"
 	local d="${2:?missing 2d arg to ${func}() (<dst>)}"
-	local t
-
-	local rc=0
-	# Keep changes to this variable local to function
-	local CP_OPTS="$CP_OPTS"
-
-	if [ -L "$d" ]; then
-		# cp(1) does follow link for existing
-		# directories even with -d option
-		if [ -n "$BACKUP" ]; then
-			mv -f "$d" "$d.$BACKUP" || rc=$?
-			# Not backing up twice
-			CP_OPTS="$CP_OPTS_NORMAL"
-		else
-			rm -f "$d" || rc=$?
-			# CP_OPTS should be CP_OPTS_NORMAL based on BACKUP
-		fi
-		# Not copying to directory in case of mv(1)/rm(1) failure
-		[ ! -d "$d" ] || return
-		[ $rc -eq 0 -o -z "$EEXIST" ] || return $rc
-	elif [ -d "$d" ]; then
-		# Not copying to directory
-		rmdir "$d" 2>/dev/null || return
-	fi
 
 	if [ -L "$s" ]; then
 		t="$(cd "$SP" && readlink -m "$s")" || return
@@ -231,9 +233,13 @@ install_sh__reg_file_copy()
 		t="$DP${t#$SP}"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
+		# Backup if needed before installing
+		install_sh__backup "$d" || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
+		# Backup if needed before installing
+		install_sh__backup "$d" || return
 		# Copy regular file
 		cp -fd $CP_OPTS "$s" "$d" || return
 	fi
@@ -488,8 +494,8 @@ reg_file_copy()
 		t="$DP$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
-		# Try to remove existing empty directory
-		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+		# Backup if needed before installing
+		install_sh__backup "$d" || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
@@ -503,13 +509,13 @@ reg_file_copy()
 				rm -f "$t" ||:
 				return
 			fi
-			# Try to remove existing empty directory
-			[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+			# Backup if needed before installing
+			install_sh__backup "$d" || return
 			# Move new file
 			mv -f "$t" "$d" && chmod -f go+r "$d" || return
 		else
-			# Try to remove existing empty directory
-			[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+			# Backup if needed before installing
+			install_sh__backup "$d" || return
 			# Copy regular file
 			cp -fd $CP_OPTS "$s" "$d" || return
 		fi
