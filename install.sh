@@ -176,16 +176,67 @@ same()
 	return 1
 }
 
-# Usage: install_sh() <src_prefix> <dst_prefix> [files and/or dirs...]
+
 # Following environment variables can override functionality:
 #  MKDIR  - create destination directories (default: install -d), use /bin/false
 #           to force destination directory tree to exist and match source
 #  BACKUP - backup file extension or empty to disable backups (default: empty)
 #  EEXIST - fail when non-empty, destination file exists and backup either
 #           disabled or failed (default: empty)
+#  CP_OPTS - additional cp(1) options (default: --remove-destination when
+#            BACKUP is empty and '-S".$BACKUP" -b' when set)
 #  REG_FILE_COPY - copy regular file (default: install_sh__reg_file_copy())
 #  SCL_FILE_COPY - copy special file like device or socket
 #                  (default: install_sh__scl_file_copy())
+
+# Usage: install_sh__reg_file_copy() <src> <dst>
+install_sh__reg_file_copy()
+{
+	local func="${FUNCNAME:-install_sh__reg_file_copy}"
+
+	local s="${1:?missing 1st arg to ${func}() (<src>)}"
+	local d="${2:?missing 2d arg to ${func}() (<dst>)}"
+
+	local rc=0
+	# Keep changes to this variable local to function
+	local CP_OPTS="$CP_OPTS"
+
+	if [ -L "$d" ]; then
+		# cp(1) does follow link for existing
+		# directories even with -d option
+		if [ -n "$BACKUP" ]; then
+			mv -f "$d" "$d.$BACKUP" || rc=$?
+			# Not backing up twice
+			CP_OPTS="$CP_OPTS_NORMAL"
+		else
+			rm -f "$d" || rc=$?
+			# CP_OPTS should be CP_OPTS_NORMAL based on BACKUP
+		fi
+		# Not copying to directory in case of mv(1)/rm(1) failure
+		[ ! -d "$d" ] || return
+		[ $rc -eq 0 -o -z "$EEXIST" ] || return $rc
+	elif [ -d "$d" ]; then
+		# Not copying to directory
+		rmdir "$d" 2>/dev/null || return
+	fi
+
+	cp -fd $CP_OPTS "$s" "$d"
+}
+
+# Usage: install_sh__scl_file_copy() <src> <dst>
+install_sh__scl_file_copy()
+{
+	local func="${FUNCNAME:-install_sh__scl_file_copy}"
+
+	local s="${1:?missing 1st arg to ${func}() (<src>)}"
+	local d="${2:?missing 2d arg to ${func}() (<dst>)}"
+
+	# Not backing up specific files
+	[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
+	ln -snf "$s" "$d"
+}
+
+# Usage: install_sh() <src_prefix> <dst_prefix> [files and/or dirs...]
 install_sh()
 {
 	local func="${FUNCNAME:-install_sh}"
@@ -210,23 +261,17 @@ install_sh()
 	local s d
 
 	local MKDIR="${MKDIR:-mkdir -p}"
+
 	local BACKUP="${BACKUP:-}"
 	local EEXIST="${EEXIST:-}"
-	# Usage: install_sh__reg_file_copy <s> <d>
-	install_sh__reg_file_copy()
-	{
-		local s="$1" d="$2"
-		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
-		cp -fd --remove-destination "$s" "$d"
-	}
+
+	local CP_OPTS_BACKUP="-S.${BACKUP:-inst-sh} -b"
+	local CP_OPTS_NORMAL='--remove-destination'
+	local CP_OPTS
+	CP_OPTS="${BACKUP:+$CP_OPTS_BACKUP}"
+	CP_OPTS="${CP_OPTS:-$CP_OPTS_NORMAL}"
+
 	local REG_FILE_COPY="${REG_FILE_COPY:-install_sh__reg_file_copy}"
-	# Usage: install_sh__scl_file_copy <s> <d>
-	install_sh__scl_file_copy()
-	{
-		local s="$1" d="$2"
-		[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
-		ln -snf "$s" "$d"
-	}
 	local SCL_FILE_COPY="${SCL_FILE_COPY:-install_sh__scl_file_copy}"
 
 	[ -L "$src" -o ! -d "$src" ] || src="$src/* $src/.*"
@@ -257,22 +302,16 @@ install_sh()
 		# If $src is empty directory wildcard does not expand
 		[ -e "$s" ] || continue
 
-		# Make backup of destination file
+		# Add last component of source name to $d if it is directory
 		d="$dst"
 		if [ ! -L "$d" -a -d "$d" ]; then
 			d="$d/${s##*/}"
 		fi
 
+		# Skip if destination exists and same as source
 		if [ -e "$d" -o -L "$d" ]; then
-			# Same as source: skip
 			! same "$s" "$d" || continue
-
-			if [ -n "$BACKUP" -a \( -L "$d" -o -f "$d" \) ] &&
-			   mv -f "$d" "$d.$BACKUP"; then
-				:
-			else
-				[ -z "$EEXIST" ] || return
-			fi
+			[ -n "$BACKUP" -o -z "$EEXIST" ] || return
 		fi
 
 		# Symlinks, files and specials are next
@@ -447,7 +486,7 @@ reg_file_copy()
 			# Try to remove existing empty directory
 			[ ! -d "$d" -o -L "$d" ] || rmdir "$d" 2>/dev/null || return
 			# Copy regular file
-			cp -fd --remove-destination "$s" "$d" || return
+			cp -fd $CP_OPTS "$s" "$d" || return
 		fi
 	fi
 
