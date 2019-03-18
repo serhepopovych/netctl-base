@@ -176,8 +176,9 @@ same()
 	return 1
 }
 
-
-# Following environment variables can override functionality:
+# Following environment variables can override install_sh() functionality:
+#  SP     - source prefix set from <src_prefix> by initial install_sh() call
+#  DP     - destination prefix set from <dst_prefix> by inital install_sh() call
 #  MKDIR  - create destination directories (default: install -d), use /bin/false
 #           to force destination directory tree to exist and match source
 #  BACKUP - backup file extension or empty to disable backups (default: empty)
@@ -245,6 +246,29 @@ install_sh()
 	local dp="${2:?missing 2d arg to ${func}() (<dst_prefix>)}"
 	shift 2
 
+	if [ -z "$SP" ]; then
+		# These variables are set once on initial install_sh()
+		# call and can change behaviour of function
+		local SP="$sp"
+		local DP="$dp"
+
+		local MKDIR="${MKDIR:-mkdir -p}"
+
+		local BACKUP="${BACKUP:-}"
+		local EEXIST="${EEXIST:-}"
+
+		local REG_FILE_COPY="${REG_FILE_COPY:-install_sh__reg_file_copy}"
+		local SCL_FILE_COPY="${SCL_FILE_COPY:-install_sh__scl_file_copy}"
+
+		# These are set once too but their value depends
+		# on above variables
+		local CP_OPTS_BACKUP="-S.${BACKUP:-inst-sh} -b"
+		local CP_OPTS_NORMAL='--remove-destination'
+		local CP_OPTS
+		CP_OPTS="${BACKUP:+$CP_OPTS_BACKUP}"
+		CP_OPTS="${CP_OPTS:-$CP_OPTS_NORMAL}"
+	fi
+
 	while [ $# -gt 1 ]; do
 		[ -z "$1" ] || "${func}" "$sp" "$dp" "$1" || return
 		shift
@@ -259,20 +283,6 @@ install_sh()
 	local dst="$dp/$fd"
 
 	local s d
-
-	local MKDIR="${MKDIR:-mkdir -p}"
-
-	local BACKUP="${BACKUP:-}"
-	local EEXIST="${EEXIST:-}"
-
-	local CP_OPTS_BACKUP="-S.${BACKUP:-inst-sh} -b"
-	local CP_OPTS_NORMAL='--remove-destination'
-	local CP_OPTS
-	CP_OPTS="${BACKUP:+$CP_OPTS_BACKUP}"
-	CP_OPTS="${CP_OPTS:-$CP_OPTS_NORMAL}"
-
-	local REG_FILE_COPY="${REG_FILE_COPY:-install_sh__reg_file_copy}"
-	local SCL_FILE_COPY="${SCL_FILE_COPY:-install_sh__scl_file_copy}"
 
 	[ -L "$src" -o ! -d "$src" ] || src="$src/* $src/.*"
 
