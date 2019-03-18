@@ -197,6 +197,7 @@ install_sh__reg_file_copy()
 
 	local s="${1:?missing 1st arg to ${func}() (<src>)}"
 	local d="${2:?missing 2d arg to ${func}() (<dst>)}"
+	local t
 
 	local rc=0
 	# Keep changes to this variable local to function
@@ -221,7 +222,21 @@ install_sh__reg_file_copy()
 		rmdir "$d" 2>/dev/null || return
 	fi
 
-	cp -fd $CP_OPTS "$s" "$d"
+	if [ -L "$s" ]; then
+		t="$(cd "$SP" && readlink -m "$s")" || return
+		# Outside of SP directory?
+		[ ! -d "$t" ] || t="$t/."
+		[ -z "${t##$SP/*}" ] || return 0
+		# Make path relative
+		t="$DP${t#$SP}"
+		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
+		relative_path "$t" "$d" s || return
+		# Link it
+		ln -snf "$s" "$d" || return
+	else
+		# Copy regular file
+		cp -fd $CP_OPTS "$s" "$d" || return
+	fi
 }
 
 # Usage: install_sh__scl_file_copy() <src> <dst>
@@ -461,16 +476,16 @@ reg_file_copy()
 	local t
 
 	if [ -L "$s" ]; then
-		t="$(cd "$SOURCE" && readlink -m "$s")" || return
-		# Outside of SOURCE directory?
+		t="$(cd "$SP" && readlink -m "$s")" || return
+		# Outside of SP directory?
 		[ ! -d "$t" ] || t="$t/."
-		[ -z "${t##$SOURCE/*}" ] || return 0
+		[ -z "${t##$SP/*}" ] || return 0
 		# Subproject responsibility?
-		t="${t#$SOURCE}"
+		t="${t#$SP}"
 		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Make path relative: we do not expect symlinks from DEST
 		# to ROOT as pointless and DEST installed before ROOT
-		t="$DEST$t"
+		t="$DP$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
 		# Try to remove existing empty directory
