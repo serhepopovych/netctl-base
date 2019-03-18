@@ -152,6 +152,30 @@ relative_path()
 	return_var 0 "${rp_dst}" "$3"
 }
 
+# Usage: same <s> <d>
+same()
+{
+	local func="${FUNCNAME:-same}"
+
+	local s="${1:?missing 1st arg to ${func}() (<s>)}"
+	local d="${2:?missing 2d arg to ${func}() (<d>)}"
+
+	# Device and inode number are the same?
+	if [ "$d" -ef "$s" ]; then
+		return 0
+	fi
+	# Symlinks and target is the same?
+	if [ -L "$d" -a -L "$s" -a \
+	     "$(readlink -q "$d")" = "$(readlink -q "$s")" ]; then
+		return 0
+	fi
+	# Not a directory and content is the same?
+	if [ ! -d "$d" -a ! -d "$s" ] && cmp -s "$d" "$s"; then
+		return 0
+	fi
+	return 1
+}
+
 # Usage: install_sh() <src_prefix> <dst_prefix> [files and/or dirs...]
 # Following environment variables can override functionality:
 #  MKDIR  - create destination directories (default: install -d), use /bin/false
@@ -241,8 +265,7 @@ install_sh()
 
 		if [ -e "$d" -o -L "$d" ]; then
 			# Same as source: skip
-			[ ! "$d" -ef "$s" ] || continue
-			[ -d "$d" -o -d "$s" ] || ! cmp -s "$d" "$s" || continue
+			! same "$s" "$d" || continue
 
 			if [ -n "$BACKUP" -a \( -L "$d" -o -f "$d" \) ] &&
 			   mv -f "$d" "$d.$BACKUP"; then
