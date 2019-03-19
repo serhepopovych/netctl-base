@@ -152,6 +152,29 @@ relative_path()
 	return_var 0 "${rp_dst}" "$3"
 }
 
+# Usage: subpath <prefix> <path> [<var_result>]
+subpath()
+{
+	local func="${FUNCNAME:-subpath}"
+
+	local prefix="${1:?missing 1st arg to ${func}() (<prefix>)}"
+	local path="${2:?missing 2d arg to ${func}() (<path>)}"
+	local p
+
+	p="${p%.}"
+	p="${path%%/}"
+	# Terminate path with single '/' even if it is a file.
+	p="$p/"
+
+	prefix="${prefix%.}"
+	prefix="${prefix%%/}"
+
+	# Outside of prefix directory?
+	[ -z "${p##$prefix/*}" ] || return
+
+	return_var 0 "${path#$prefix}" "$3"
+}
+
 # Usage: same <s> <d>
 same()
 {
@@ -227,10 +250,9 @@ install_sh__reg_file_copy()
 	if [ -L "$s" ]; then
 		t="$(cd "$SP" && readlink -m "$s")" || return
 		# Outside of SP directory?
-		[ ! -d "$t" ] || t="$t/."
-		[ -z "${t##$SP/*}" ] || return 0
+		subpath "$SP" "$t" t || return
 		# Make path relative
-		t="$DP${t#$SP}"
+		t="$DP$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
 		# Backup if needed before installing
@@ -484,10 +506,8 @@ reg_file_copy()
 	if [ -L "$s" ]; then
 		t="$(cd "$SP" && readlink -m "$s")" || return
 		# Outside of SP directory?
-		[ ! -d "$t" ] || t="$t/."
-		[ -z "${t##$SP/*}" ] || return 0
+		subpath "$SP" "$t" t || return
 		# Subproject responsibility?
-		t="${t#$SP}"
 		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Make path relative: we do not expect symlinks from DEST
 		# to ROOT as pointless and DEST installed before ROOT
