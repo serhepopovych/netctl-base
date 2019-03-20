@@ -524,15 +524,14 @@ reg_file_copy()
 			t="$(mktemp "$d.XXXXXXXX")" && cp -fd "$s" "$t" &&
 				exec_vars L='' -- subst_templates "'$t'" || return
 
-			if [ ! -d "$d" ] && cmp -s "$t" "$d"; then
-				# Skip file with same contents
-				rm -f "$t" ||:
-				return
+			if [ -d "$d" ] || ! cmp -s "$t" "$d"; then
+				# Backup if needed before installing
+				install_sh__backup "$d" || return
+				# Hard link temporary file
+				cp -fd $CP_OPTS -l "$t" "$d" &&
+					chmod -f --reference="$s" "$d" || return
 			fi
-			# Backup if needed before installing
-			install_sh__backup "$d" || return
-			# Move new file
-			mv -f "$t" "$d" && chmod -f --reference="$s" "$d" || return
+			rm -f "$t" || return
 		else
 			# Backup if needed before installing
 			install_sh__backup "$d" || return
