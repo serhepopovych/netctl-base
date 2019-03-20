@@ -213,12 +213,15 @@ same()
 #  SCL_FILE_COPY - copy special file like device or socket
 #                  (default: install_sh__scl_file_copy())
 
-# Usage: install_sh__backup() <dst>
+# Usage: install_sh__backup() <dst> [<tgt>]
 install_sh__backup()
 {
 	local func="${FUNCNAME:-install_sh__backup}"
 
 	local d="${1:?missing 1st arg to ${func}() (<dst>)}"
+	local t="$2"
+
+	[ -z "$t" ] || ! same "$d" "$t" || return 0
 
 	local rc=0
 
@@ -256,7 +259,7 @@ install_sh__reg_file_copy()
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
 		# Backup if needed before installing
-		install_sh__backup "$d" || return
+		install_sh__backup "$d" "$t" || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
@@ -511,11 +514,14 @@ reg_file_copy()
 		[ -n "${t##*/.subprojects/*}" ] || return 0
 		# Make path relative: we do not expect symlinks from DEST
 		# to ROOT as pointless and DEST installed before ROOT
+		t="$(cd "$DP" && readlink -m "$DP$t")" || return
+		# Outside of DP directory?
+		subpath "$DP" "$t" t || return
 		t="$DP$t"
 		[ -e "$t" -o ! -d "$s" ] || mkdir -p "$t" || return
 		relative_path "$t" "$d" s || return
 		# Backup if needed before installing
-		install_sh__backup "$d" || return
+		install_sh__backup "$d" "$t" || return
 		# Link it
 		ln -snf "$s" "$d" || return
 	else
@@ -552,6 +558,22 @@ install_root()
 	local DO_SUBST_TEMPLATES=y
 
 	install_sh "$SOURCE" "$TRGT" "$@"
+
+	# End: remove compatibility sumlinks to DEST from ROOT
+	if [ -n "$RD" ]; then
+		local l lnk
+		for l in "$ROOT"/* "$ROOT"/.*; do
+			# Is it symlink?
+			[ -L "$l" ] || continue
+
+			# Is it's target is RD?
+			lnk="$(readlink -q "$l")"
+			[ -z "${lnk##$RD/*}" ] || continue
+
+			# Then remove it
+			rm -f "$l" ||:
+		done
+	fi
 }
 
 # Usage: install_dest() [<file|dir>...]
@@ -563,6 +585,16 @@ install_dest()
 	local DO_SUBST_TEMPLATES=y
 
 	install_sh "$SOURCE" "$TRGT" "$@"
+
+	# Begin: create symlinks to DEST entries in ROOT
+	if [ -n "$RD" ]; then
+		local TP
+		while [ $# -gt 0 ]; do
+			TP="$ROOT/$1"
+			[ -e "$TP" ] || ln -snf "$RD/${1##/}" "$TP" || return
+			shift
+		done
+	fi
 }
 
 # Usage: adj_rights() <owner> <mode> ...
@@ -661,25 +693,51 @@ NAME="${SOURCE##*/}"
 	AS_BASE="$NAME" || AS_BASE=
 
 if [ -z "$PARENT" ]; then
-	# Destination to install
-	export DEST="${DEST:-/}"
+	# System wide directory prefix
+	ROOT="${ROOT%%/}"
+	if [ -n "$ROOT" ]; then
+		# If not absolute path, assume current directory
+		[ -z "${ROOT##/*}" ] || ROOT="./$ROOT"
 
-	if [ ! -L "$DEST" -a -d "$DEST" ]; then
-		:
-	elif [ ! -e "$DEST" ] && mkdir -p "$DEST"; then
-		:
+		# If ROOT is a (symlink to) directory; does not exist or broken
+		# symlink that successfuly removed and mkdir(1) succeeded: continue
+		if [ -d "$ROOT" ] || {
+			[ ! -e "$ROOT" ] &&
+			{ [ ! -L "$ROOT" ] || rm -f "$ROOT"; } &&
+			mkdir -p "$ROOT"
+		}; then
+			:
+		else
+			abort '%s: ROOT="%s" exists and not a directory: aborting\n' \
+				"$prog_name" "$ROOT"
+		fi
+
+		ROOT="$(cd "$ROOT" && echo "$PWD")" ||
+			abort '%s: ROOT="%s" cannot make absolute path\n' \
+				"$prog_name" "$ROOT"
 	else
-		abort '%s: DEST="%s" exists and not a directory: aborting\n' \
-			"$prog_name" "$DEST"
+		ROOT='/'
 	fi
+	export ROOT
+
+	# Make sure DEST is subpath under ROOT
+	DEST="${DEST%.}"
+	DEST="${DEST%%/}"
+	if [ -n "$DEST" ]; then
+		# If not absolute path: make it relative to root
+		if [ -z "${DEST##/*}" ]; then
+			subpath "$ROOT" "$DEST" DEST ||
+			abort '%s: DEST="%s" is not subpath of ROOT="%s": aborting\n' \
+				"$prog_name" "$DEST" "$ROOT"
+		else
+			DEST="/$DEST"
+		fi
+	fi
+	export RD="${DEST##/}"
+	export DEST="$ROOT$DEST"
 
 	# Destination on target system (useful for package build)
 	export TARGET="${TARGET:-$DEST}"
-
-	# System wide directory prefix
-	[ -n "$ROOT" ] && ROOT="$(cd "$ROOT" 2>/dev/null && echo "$PWD")" || \
-		ROOT="$DEST"
-	export ROOT
 
 	# Working directory
 	export WORK_DIR="$DEST/.install"
