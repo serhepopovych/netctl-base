@@ -620,10 +620,6 @@ adj_rights()
 	done
 }
 
-NAME_UC="$(echo "$NAME" | tr '[:lower:]' '[:upper:]')"
-begin_header_str="##### BEGIN ${NAME_UC} #####"
-end_header_str="##### END ${NAME_UC} #####"
-
 # Usage: begin_header <file>
 begin_header()
 {
@@ -641,7 +637,7 @@ end_header()
 
 	local f="${1:?missing 1st arg to ${func}() (<file>)}"
 
-	echo "$end_header" >>"$f"
+	echo "$end_header_str" >>"$f"
 }
 
 # Usage: prepare_file <file>
@@ -687,6 +683,11 @@ SOURCE="$(cd "$SOURCE" && echo "$PWD")" &&
 [ "$SOURCE/install.sh" -ef "$0" -a -f "$SOURCE/vars-sh" ] ||
 	abort '%s: cannot find project location\n' "$prog_name"
 NAME="${SOURCE##*/}"
+NAME_UC="$(echo "$NAME" | tr '[:lower:]' '[:upper:]')"
+
+# Prepare begin/end header strings
+begin_header_str="##### BEGIN ${NAME_UC} #####"
+end_header_str="##### END ${NAME_UC} #####"
 
 # Detect if running as base
 [ ! -L "$SOURCE/install.sh" ] &&
