@@ -532,7 +532,7 @@ reg_file_copy()
 			# Backup if needed before installing
 			install_sh__backup "$d" || return
 			# Move new file
-			mv -f "$t" "$d" && chmod -f go+r "$d" || return
+			mv -f "$t" "$d" && chmod -f --reference="$s" "$d" || return
 		else
 			# Backup if needed before installing
 			install_sh__backup "$d" || return
@@ -561,6 +561,7 @@ install_dest()
 	local REG_FILE_COPY='reg_file_copy'
 	local L='D'
 	local TRGT="$DEST"
+	local DO_SUBST_TEMPLATES=y
 
 	install_sh "$SOURCE" "$TRGT" "$@"
 }
@@ -785,12 +786,6 @@ install_root \
 	'/srv'    \
 	'/usr'    \
 	'/var'
-
-# Replace configuration templates
-if [ -z "$PARENT" ]; then
-	exec_vars L='W' -- walk_paths subst_templates \
-				"'$DEST/netctl'"
-fi
 
 # Source project specific code
 install_sh="$SOURCE/install-sh"
