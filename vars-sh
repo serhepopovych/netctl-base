@@ -3,4 +3,4 @@
 DESTS='/netctl'
 
 # Inherit subproject(s) variables
-inherit '.subprojects/installsh'
+inherit 'installsh/vars-sh'
